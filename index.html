@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CanCard User Portal</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; background: #f4f7f6; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    h2 { margin-top: 0; color: #333; }
+    input, select, button { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+    button { background: #007bff; color: white; border: none; font-weight: bold; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    button.update-btn { background: #28a745; }
+    button.update-btn:hover { background: #1e7e34; }
+    button.delete-btn { background: #dc3545; }
+    button.delete-btn:hover { background: #a71d2a; }
+    .status { padding: 10px; margin-top: 10px; border-radius: 4px; font-weight: bold; text-align: center; }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+  </style>
+</head>
+<body>
+
+  <h1>CanCard User Portal</h1>
+
+  <!-- Create / Update Section -->
+  <div class="card">
+    <h2>Add or Update User</h2>
+    <input type="text" id="userId" placeholder="User ID (e.g., USER_100)">
+    <input type="text" id="fullName" placeholder="Full Name">
+    <input type="number" id="age" placeholder="Age">
+    <input type="text" id="bloodType" placeholder="Blood Type (e.g., A+, O-)">
+    <select id="verificationStatus">
+      <option value="self_reported">Self Reported</option>
+      <option value="doctor_verified">Doctor Verified</option>
+    </select>
+    <button onclick="saveUser('POST')">Add New User (POST)</button>
+    <button class="update-btn" onclick="saveUser('PUT')">Update Existing User (PUT)</button>
+  </div>
+
+  <!-- Search & Delete Section -->
+  <div class="card">
+    <h2>Lookup User Profile</h2>
+    <input type="text" id="searchId" placeholder="Enter User ID to Search">
+    <button onclick="getUser()">Search User (GET)</button>
+    <div id="profileResult"></div>
+  </div>
+
+  <div id="statusMsg"></div>
+
+  <script>
+    const baseUrl = '/api/user';
+
+    function showStatus(message, isError = false) {
+      const msgDiv = document.getElementById('statusMsg');
+      msgDiv.className = `status ${isError ? 'error' : 'success'}`;
+      msgDiv.innerText = message;
+    }
+
+    // GET Request
+    async function getUser() {
+      const id = document.getElementById('searchId').value.trim();
+      if (!id) return showStatus('Please enter a User ID to search', true);
+
+      const res = await fetch(`${baseUrl}/${id}`);
+      const data = await res.json();
+
+      const profileDiv = document.getElementById('profileResult');
+      if (res.ok) {
+        profileDiv.innerHTML = `
+          <hr>
+          <p><strong>ID:</strong> ${data.userId}</p>
+          <p><strong>Name:</strong> ${data.fullName}</p>
+          <p><strong>Age:</strong> ${data.age}</p>
+          <p><strong>Blood Type:</strong> ${data.bloodType}</p>
+          <p><strong>Status:</strong> ${data.verificationStatus}</p>
+          <button class="delete-btn" onclick="deleteUser('${data.userId}')">Delete Profile (DELETE)</button>
+        `;
+        showStatus('User profile loaded!');
+      } else {
+        profileDiv.innerHTML = '';
+        showStatus(data.error || 'User not found', true);
+      }
+    }
+
+    // POST & PUT Requests
+    async function saveUser(method) {
+      const id = document.getElementById('userId').value.trim();
+      const name = document.getElementById('fullName').value.trim();
+      const age = document.getElementById('age').value;
+      const bloodType = document.getElementById('bloodType').value.trim();
+      const status = document.getElementById('verificationStatus').value;
+
+      if (!id) return showStatus('User ID is required', true);
+
+      const url = method === 'PUT' ? `${baseUrl}/${id}` : baseUrl;
+      const bodyData = { 
+        userId: id, 
+        fullName: name, 
+        age: age ? parseInt(age) : null, 
+        bloodType: bloodType, 
+        verificationStatus: status 
+      };
+
+      const res = await fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyData)
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        showStatus(data.message);
+      } else {
+        showStatus(data.error || 'Operation failed', true);
+      }
+    }
+
+    // DELETE Request
+    async function deleteUser(id) {
+      if (!confirm(`Are you sure you want to delete ${id}?`)) return;
+
+      const res = await fetch(`${baseUrl}/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+
+      if (res.ok) {
+        document.getElementById('profileResult').innerHTML = '';
+        showStatus(data.message);
+      } else {
+        showStatus(data.error || 'Delete failed', true);
+      }
+    }
+  </script>
+</body>
+</html>
