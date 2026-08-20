@@ -169,6 +169,19 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
 
 <!-- SCREEN: HEALTH -->
 <div id="scrHealth" class="screen">
+<div class="card"><h3><span class="e">&#x1f3f7;</span> Add Health Info</h3>
+<select class="i" id="newHType">
+<option value="allergy">Allergy</option>
+<option value="condition">Medical Condition</option>
+<option value="medication">Medication</option>
+<option value="surgery">Surgery/Procedure</option>
+<option value="lab_value">Lab Value</option>
+<option value="vaccination">Vaccination</option>
+<option value="family_history">Family History</option>
+</select>
+<div class="flex mt"><input class="i g1" id="newHName" placeholder="Name (e.g. Penicillin)"><input class="i g1" id="newHVal" placeholder="Value (e.g. Positive)"></div>
+<button class="btn btn-s mt" onclick="addHealthRecord()" style="width:auto;padding:10px 20px">+ Add Record</button>
+</div>
 <div class="tabs" id="healthTabs">
 <button class="tab active" onclick="filterHealth('all',this)">All</button>
 <button class="tab" onclick="filterHealth('verified',this)">Verified</button>
@@ -202,36 +215,61 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
 <div id="scrSim" class="screen">
 <div class="card" style="background:#fefcbf;border-left:4px solid #ed8936">
 <h3 style="color:#744210">&#x1f52e; What If... Simulation</h3>
-<p tyle="font-ize:13px;olor:#744210;opciy:.8">Adjust a variale to see t's effect on your health/p>
+<p style="font-size:13px;color:#744210;opacity:.8">Adjust lifestyle variables to explore potential health effects</p>
 </div>
 
 <div class="card">
-<h3><span class="e">&#x1f634;</span> Slp Duration</h3>
-<di style="dislay:flex;ustify-content:space-between;font-size:13px;color:#718096">
+<h3><span class="e">&#x1f634;</span> Sleep Duration</h3>
+<div style="display:flex;justify-content:space-between;font-size:13px;color:#718096">
 <span>4h</span>
-< id="simSleepLabel" tyle="fon-weight:700;olor:#667eea">5h 45m</span>
+<span id="simSleepLabel" style="font-weight:700;color:#667eea">5h 45m</span>
 <span>10h</span>
 </div>
-<input type="range" id="simSleep" min="4" max="10" tep="0.25" value="5.75" oninput="updateSim()">
+<input type="range" id="simSleep" min="4" max="10" step="0.25" value="5.75" oninput="updateSim()">
 </div>
 
 <div class="card">
-<h3><span class="e">&#x26bd;</span> Physical Activity/h3>
-<select clss="i" id="simActivity" onchange="updateSim()">
-<option value="normal">Normal (4x fooball/week)</option>
-<option value="pause7">Paus sports (7 days)</option>
-<option value="pause14">Paus sports (14 days)</option>
+<h3><span class="e">&#x26bd;</span> Physical Activity</h3>
+<select class="i" id="simActivity" onchange="updateSim()">
+<option value="normal">Normal (4x football/week)</option>
+<option value="pause7">Pause sports (7 days)</option>
+<option value="pause14">Pause sports (14 days)</option>
 <option value="increase">Increase to 5x/week</option>
-</selct>
+</select>
 </div>
 
 <button class="btn btn-p" onclick="runSim()">&#x25b6; Run Simlation</button>
 
 <div class="sr" id="simResult">
-<h3 tyle="fon-size:15px;argin-bottom:12px">&#x1f4ca; Simltion Results</h3>
-<di id="simResContet"></div>
-<div styel="magin-top:12px;apdding:10px;bakcground:rgba(102,126,234,.1);border-radius:10px;font-size:12px;color:#718096" id="simMessage"></div>
+<h3 style="font-size:15px;margin-bottom:12px">&#x1f4ca; Simulation Results</h3>
+<div id="simResContent"></div>
+<div style="margin-top:12px;padding:10px;background:rgba(102,126,234,.1);border-radius:10px;font-size:12px;color:#718096" id="simMessage"></div>
 <div style="margin-top:6px;font-size:10px;color:#718096;opacity:.6" id="simDisclaimer"></div>
+</div>
+</div>
+
+<!-- SCREEN: AI -->
+<div id="scrAi" class="screen">
+<div class="card" style="background:#f0f4ff;border-left:4px solid #667eea"><h3 style="color:#667eea">&#x1f916; AI Health Assistant</h3></div>
+<div class="card">
+<div id="chatBox" style="background:#f7fafc;border-radius:12px;padding:12px;height:280px;overflow-y:auto;margin-bottom:12px">
+<div style="padding:10px 14px;background:#e2e8f0;border-radius:12px;margin:0 0 8px 0;max-width:85%">Ask about sleep, blood type, allergies, or vaccinations!</div>
+</div>
+<div class="flex"><input class="i g1" id="chatInput" placeholder="Ask about your health..."><button class="btn btn-p" onclick="chatAsk()" style="width:auto;padding:12px 16px">Ask</button></div>
+</div>
+</div>
+
+<!-- SCREEN: DOCTOR -->
+<div id="scrDoctor" class="screen">
+<div class="card" style="background:linear-gradient(135deg,#48bb78,#38a169);color:#fff"><h3>&#x1f48a; Dr. Kay - General Practitioner</h3></div>
+<div class="card">
+<div class="rec"><span class="nm">Phone</span><span class="vl">+90-555-123-4567</span></div>
+<div class="rec"><span class="nm">Email</span><span class="vl">dr.kay@clinic.app</span></div>
+</div>
+<div class="card">
+<h3>Send Message</h3>
+<textarea class="i" id="drMsg" rows="3" placeholder="Ask a question..."></textarea>
+<button class="btn btn-s mt" onclick="sendToDoctor()">Send</button>
 </div>
 </div>
 
@@ -285,6 +323,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
 </button>
 <button class="nav" data-scr="Sim" onclick="navigate('Sim',this)">
 <span class="i">&#x1f52e;</span> Sim
+</button>
+<button class="nav" data-scr="Ai" onclick="navigate('Ai',this)">
+<span class="i">&#x1f916;</span> AI
+</button>
+<button class="nav" data-scr="Doctor" onclick="navigate('Doctor',this)">
+<span class="i">&#x1f48a;</span> Doctor
 </button>
 <button class="nav" data-scr="Nfc" onclick="navigate('Nfc',this)">
 <span class="i">&#x1f4f6;</span> NFC
@@ -363,6 +407,8 @@ function navigate(name,btn){
   if(name==='Dashboard') loadDashboard();
   else if(name==='Health') loadHealth();
   else if(name==='Twin') loadTwin();
+  else if(name==='Ai') { /* chat loads on interaction */ }
+  else if(name==='Doctor') { /* doctor loads on interaction */ }
   // Sim and Nfc load on interaction
 }
 
@@ -486,6 +532,43 @@ function loadTwin(){
       ih+='<div class="rec"><span class="nm">'+k.replace(/_/g,' ')+'</span><span class="vl">'+ci[k]+'</span></div>';
     }
     $('twinIndicators').innerHTML=ih||'<div class="sm">No indicators</div>';
+  });
+}
+
+// === AI CHAT ===
+function chatAsk(){
+  var q=$('chatInput').value.trim();
+  if(!q){toast('Type a question','r');return;}
+  var box=$('chatBox');
+  box.innerHTML+='<div style="padding:10px 14px;background:#667eea;color:#fff;border-radius:12px;margin:0 0 8px auto;max-width:85%">'+q+'</div>';
+  $('chatInput').value='';
+  var ql=q.toLowerCase();var ans='';
+  if(ql.indexOf('sleep')>-1) ans='Your average sleep is 5h45m. Teenagers need 8-10h. Try going to bed earlier.';
+  else if(ql.indexOf('blood')>-1||ql.indexOf('type')>-1) ans='Your blood type is A+ (Doctor Verified). Stored in your emergency profile.';
+  else if(ql.indexOf('allerg')>-1) ans='You have Penicillin allergy (Verified). This appears in your emergency NFC profile.';
+  else if(ql.indexOf('vaccine')>-1||ql.indexOf('vaccinat')>-1) ans='You have Hepatitis B, MMR, and HPV vaccinations - all doctor verified.';
+  else if(ql.indexOf('football')>-1||ql.indexOf('sport')>-1||ql.indexOf('activity')>-1) ans='You play football 4x per week! Great for cardiovascular health.';
+  else if(ql.indexOf('emerg')>-1||ql.indexOf('nfc')>-1) ans='Your emergency profile has A+, Penicillin allergy, and Ayse Yilmaz as contact.';
+  else if(ql.indexOf('doctor')>-1) ans='Dr. Kay is your GP. You can send a message from the Doctor tab.';
+  else if(ql.indexOf('water')>-1||ql.indexOf('hydrat')>-1) ans='Your hydration is tracked at 1.5L daily. The recommendation for teens is 1.5-2L.';
+  else ans='I can help with: sleep, blood type, allergies, vaccinations, sports, emergency info, and doctors. Ask me anything related to your health!';
+  setTimeout(function(){box.innerHTML+='<div style="padding:10px 14px;background:#e2e8f0;border-radius:12px;margin:0 8px 8px 0;max-width:85%">'+ans+'</div>';box.scrollTop=box.scrollHeight;},600);
+}
+
+// === DOCTOR ===
+function sendToDoctor(){
+  var m=$('drMsg').value.trim();
+  if(!m){toast('Write a message','r');return;}
+  toast('Message sent to Dr. Kay (demo)','g');$('drMsg').value='';
+}
+
+// === ADD HEALTH RECORD ===
+function addHealthRecord(){
+  var t=$('newHType').value,n=$('newHName').value.trim(),v=$('newHVal').value.trim();
+  if(!n||!v){toast('Fill all fields','r');return;}
+  api('POST','/api/health',{userId:(U&&U.userId)||'DENIZ_001',fieldType:t,parameter:n,value:v,verificationStatus:'user_confirmed'}).then(function(r){
+    if(r.ok){toast('Record added!','g');$('newHName').value='';$('newHVal').value='';loadHealth();}
+    else toast(r.data.error||'Failed','r');
   });
 }
 
