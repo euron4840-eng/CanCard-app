@@ -1,1 +1,616 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>CanCard Prototype</title><style>body{font-family:Arial,sans-serif;margin:0;padding:20px;background:#f0f4f8}.card{background:white;padding:20px;margin:16px 0;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.1)}input,button{width:100%;padding:10px;margin:6px 0;border:1px solid #ddd;border-radius:6px;box-sizing:border-box}button{background:#667eea;color:white;border:none;cursor:pointer;font-weight:bold}h1{color:#333}.nav{display:flex;gap:4px;margin-bottom:12px}.nav button{width:auto;padding:6px 12px;font-size:12px;background:#e9ecef;color:#333}.nav button.act{background:#667eea;color:white}.ok{background:#d4edda;color:#155724;padding:10px;border-radius:6px}.err{background:#f8d7da;color:#721c24;padding:10px;border-radius:6px}small{color:#999}</style></head><body><div class="card"><h1>CanCard</h1><small>Prototype - API Status</small></div><div class="nav" id="nav"><button class="act" onclick="show(login)">Login</button><button onclick="show(profile)">Profile</button><button onclick="show(health)">Health</button><button onclick="show(twin)">Digital Twin</button><button onclick="show(sim)">Simulation</button><button onclick="show(nfc)">NFC</button></div><div id="main"></div><script>var T=localStorage.getItem("t");async function c(m,u,b){var o={method:m,headers:{"Content-Type":"application/json"}};if(T)o.headers["Authorization"]="Bearer "+T;if(b)o.body=JSON.stringify(b);var r=await fetch(u,o);return{ok:r.ok,d:await r.json()}}function $(i){return document.getElementById(i)}function show(s){document.querySelectorAll(".nav button").forEach(function(b){b.classList.remove("act")});event.target.classList.add("act");window["show"+s]()}function showlogin(){var h="<div class=card><h2>Login</h2><input id=em placeholder=Email value=deniz.demo@cancard.app><input id=pw type=password placeholder=Password value=demo1234><button onclick=login()>Sign In</button><small>Demo pre-filled</small></div>";$("main").innerHTML=h}async function login(){var r=await c("POST","/api/auth/login",{email:$("em").value,password:$("pw").value});if(r.ok){T=r.d.token;localStorage.setItem("t",T);$("main").innerHTML="<div class=ok>Logged in as "+r.d.user.fullName+"</div>"+JSON.stringify(r.d,null,2)}else{$("main").innerHTML="<div class=err>Login failed: "+r.d.error+"</div>"}}async function showprofile(){var r=await c("GET","/api/users/DENIZ_001");$("main").innerHTML=r.ok?"<div class=card><h2>User Profile</h2><pre>"+JSON.stringify(r.d,null,2)+"</pre></div>":"<div class=err>"+r.d.error+"</div>"}async function showhealth(){var r=await c("GET","/api/health/DENIZ_001");if(r.ok){var h="<div class=card><h2>Health Records ("+r.d.length+")</h2>";for(var i=0;i<r.d.length;i++){h+="<p><b>"+r.d[i].parameter+"</b> "+r.d[i].value+" "+(r.d[i].unit||"")+" <small>"+r.d[i].verification_status+"</small></p>"}h+="</div>";$("main").innerHTML=h}else{$("main").innerHTML="<div class=err>"+r.d.error+"</div>"}}async function showtwin(){var r=await c("GET","/api/digital-twin/DENIZ_001");if(r.ok){var d=r.d;var h="<div class=card><h2>Digital Twin</h2>";if(d.health_summary){h+="<h3>Health</h3>";for(var k in d.health_summary){h+="<p><b>"+k+"</b> "+(d.health_summary[k].value||"")+" "+(d.health_summary[k].unit||"")+"</p>"}}if(d.lifestyle_summary){h+="<h3>Lifestyle</h3>";for(var k in d.lifestyle_summary){h+="<p><b>"+k+"</b> "+d.lifestyle_summary[k]+"</p>"}}h+="</div>";$("main").innerHTML=h}else{$("main").innerHTML="<div class=err>"+r.d.error+"</div>"}}async function showsim(){var h="<div class=card><h2>What If Simulation</h2><p>Adjust sleep:</p><input id=sl type=range min=4 max=10 step=0.25 value=5.75 style=width:100%><p id=slv>5.75 hours</p><button onclick=runsim()>Run</button><div id=sr></div></div>";$("main").innerHTML=h;$("sl").oninput=function(){$("slv").textContent=this.value+" hours"}}async function runsim(){var r=await c("POST","/api/simulation/run",{userId:"DENIZ_001",changes:{sleep:$("sl").value+"h"}});$("sr").innerHTML=r.ok?"<div class=ok>Simulation complete</div><pre>"+JSON.stringify(r.d,null,2)+"</pre>":"<div class=err>"+r.d.error+"</div>"}function shownfc(){$("main").innerHTML="<div class=card><h2>NFC Emergency Access</h2><p>Scan NFC card or enter UID:</p><input id=nu placeholder=NFC UID><button onclick=getnfc()>Lookup</button><div id=nr></div></div>"}async function getnfc(){var u=$("nu").value||"CARD_001";var r=await c("GET","/api/nfc/emergency-profile/"+u);$("nr").innerHTML=r.ok?"<div class=ok>Profile found</div><pre>"+JSON.stringify(r.d,null,2)+"</pre>":"<div class=err>"+r.d.error+"</div>"}if(T){showprofile()}else{showlogin()}</script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>CanCard</title>
+<style>
+:root{--primary:#667eea;--primary-dark:#5a67d8;--secondary:#764ba2;--bg:#f0f2f5;--card:#fff;--text:#2d3748;--text-light:#718096;--success:#48bb78;--danger:#f56565;--warning:#ed8936;--safe-bottom:env(safe-area-inset-bottom,0px)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.app{max-width:480px;margin:0 auto;min-height:100vh;position:relative;background:var(--bg)}
+/* Header */
+.header{background:linear-gradient(135deg,var(--primary),var(--secondary));padding:20px 20px 30px;color:white;border-radius:0 0 24px 24px;position:relative}
+.header h1{font-size:22px;font-weight:700;letter-spacing:1px}
+.header .sub{font-size:13px;opacity:.85;margin-top:2px}
+.header .user-badge{position:absolute;top:20px;right:20px;background:rgba(255,255,255,.2);padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;backdrop-filter:blur(10px)}
+.header .balance-card{background:rgba(255,255,255,.15);backdrop-filter:blur(10px);border-radius:16px;padding:16px;margin-top:16px;display:flex;justify-content:space-between;align-items:center}
+.header .balance-card .label{font-size:11px;opacity:.8}
+.header .balance-card .value{font-size:18px;font-weight:700;margin-top:2px}
+/* Screens */
+.screen{display:none;padding:16px 16px 80px;animation:fadeIn .3s ease}
+.screen.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+/* Cards */
+.card{background:var(--card);border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);transition:transform .15s}
+.card:active{transform:scale(.98)}
+.card h3{font-size:15px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.card .emoji{font-size:20px}
+/* Stats Grid */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.stat-card{background:var(--card);border-radius:14px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);text-align:center}
+.stat-card .num{font-size:22px;font-weight:700;color:var(--primary)}
+.stat-card .lbl{font-size:11px;color:var(--text-light);margin-top:2px}
+/* Bottom Nav */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);max-width:480px;width:100%;background:var(--card);display:flex;justify-content:space-around;padding:8px 0 calc(8px + var(--safe-bottom));box-shadow:0 -2px 10px rgba(0,0,0,.08);z-index:100;border-radius:20px 20px 0 0}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 12px;border:none;background:none;cursor:pointer;color:var(--text-light);font-size:10px;transition:color .2s;font-family:inherit}
+.nav-item .icon{font-size:22px;line-height:1}
+.nav-item.active{color:var(--primary)}
+.nav-item.active .icon{transform:scale(1.1)}
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 20px;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit;width:100%}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:linear-gradient(135deg,var(--primary),var(--secondary));color:white}
+.btn-success{background:var(--success);color:white}
+.btn-danger{background:var(--danger);color:white}
+.btn-outline{background:transparent;border:2px solid var(--primary);color:var(--primary)}
+.btn-sm{padding:8px 14px;font-size:12px;width:auto}
+/* Inputs */
+.input-group{margin-bottom:12px}
+.input-group label{display:block;font-size:12px;font-weight:600;color:var(--text-light);margin-bottom:4px}
+.input{width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:12px;font-size:14px;outline:none;transition:border .2s;font-family:inherit;background:#f7fafc}
+.input:focus{border-color:var(--primary);background:white}
+select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234a5568' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+/* Status badges */
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-green{background:#c6f6d5;color:#22543d}
+.badge-blue{background:#bee3f8;color:#2a4365}
+.badge-orange{background:#fefcbf;color:#744210}
+.badge-red{background:#fed7d7;color:#742a2a}
+/* Records */
+.record-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f0f0f0}
+.record-item:last-child{border:none}
+.record-item .name{font-size:14px;font-weight:500}
+.record-item .val{font-size:14px;color:var(--text-light)}
+.record-item .val b{color:var(--text)}
+/* Slider */
+input[type=range]{-webkit-appearance:none;width:100%;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--primary),var(--secondary));outline:none;margin:12px 0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:white;box-shadow:0 2px 6px rgba(0,0,0,.2);cursor:pointer;border:2px solid var(--primary)}
+/* Simulation */
+.sim-result{background:linear-gradient(135deg,#f0f4ff,#e8ecff);border-radius:14px;padding:16px;margin-top:12px;display:none}
+.sim-result.show{display:block}
+.sim-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(102,126,234,.15)}
+.sim-row:last-child{border:none}
+.sim-row .label{font-size:13px;color:var(--text-light)}
+.sim-row .val{font-size:14px;font-weight:600}
+/* Toast */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);max-width:400px;padding:12px 20px;border-radius:12px;color:white;font-size:13px;font-weight:500;z-index:999;display:none;animation:slideDown .3s ease;text-align:center}
+.toast.success{background:var(--success)}
+.toast.error{background:var(--danger)}
+@keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+/* Scrollable tabs */
+.tabs{display:flex;gap:6px;overflow-x:auto;padding:4px 0 12px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:8px 16px;border-radius:20px;border:1.5px solid #e2e8f0;background:white;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all .2s;color:var(--text-light);font-family:inherit}
+.tab.active{background:var(--primary);color:white;border-color:var(--primary)}
+/* Login */
+.login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px;background:linear-gradient(135deg,#667eea,#764ba2);max-width:480px;margin:0 auto}
+.login-screen .logo{width:80px;height:80px;background:rgba(255,255,255,.15);border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:40px;margin-bottom:16px;backdrop-filter:blur(10px)}
+.login-screen h1{color:white;font-size:28px;font-weight:700;margin-bottom:4px}
+.login-screen p{color:rgba(255,255,255,.7);font-size:14px;margin-bottom:32px}
+.login-card{background:white;border-radius:24px;padding:24px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.15)}
+.login-card h2{font-size:16px;margin-bottom:16px;color:var(--text)}
+.login-card .input{border-color:#e2e8f0;background:#f7fafc}
+.login-card .input:focus{border-color:var(--primary)}
+/* Emergency profile */
+.emergency-header{background:linear-gradient(135deg,#f56565,#ed64a6);color:white;border-radius:16px;padding:16px;text-align:center;margin-bottom:12px}
+.emergency-header .icon{font-size:36px;margin-bottom:4px}
+.emergency-header h2{font-size:20px}
+.emergency-header p{opacity:.85;font-size:13px}
+.emergency-field{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f0f0}
+.emergency-field:last-child{border:none}
+.emergency-field .tag{font-size:12px;color:var(--text-light)}
+.emergency-field .val{font-size:14px;font-weight:600}
+/* NFC big scan area */
+.nfc-scan-area{border:2px dashed #e2e8f0;border-radius:20px;padding:40px 20px;text-align:center;margin-bottom:12px;background:#f7fafc;cursor:pointer;transition:all .2s}
+.nfc-scan-area:hover{border-color:var(--primary);background:#f0f4ff}
+.nfc-scan-area .icon{font-size:48px;margin-bottom:8px}
+.nfc-scan-area p{font-size:13px;color:var(--text-light)}
+/* Empty state */
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-light)}
+.empty-state .icon{font-size:48px;margin-bottom:8px;opacity:.5}
+.empty-state p{font-size:14px}
+/* Misc */
+.text-muted{color:var(--text-light);font-size:12px}
+.mt-4{margin-top:16px}
+.flex{display:flex;gap:8px}
+.grow-1{flex:1}
+.text-center{text-align:center}
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <!-- Login Screen -->
+  <div id="loginScreen" class="login-screen">
+    <div class="logo">🏥</div>
+    <h1>CanCard</h1>
+    <p>Preventive Digital Health</p>
+    <div class="login-card">
+      <h2>Sign In</h2>
+      <div class="input-group">
+        <label>Email</label>
+        <input class="input" id="loginEmail" type="email" value="deniz.demo@cancard.app" placeholder="Email">
+      </div>
+      <div class="input-group">
+        <label>Password</label>
+        <input class="input" id="loginPass" type="password" value="demo1234" placeholder="Password">
+      </div>
+      <button class="btn btn-primary mt-4" onclick="doLogin()">Sign In</button>
+      <p style="text-align:center;margin-top:12px;font-size:12px;color:#a0aec0">Demo account pre-filled</p>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="mainApp" style="display:none">
+    <!-- Header -->
+    <div class="header">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <h1>CanCard</h1>
+          <div class="sub">Digital Health Platform</div>
+        </div>
+        <button id="logoutBtn" style="background:rgba(255,255,255,.2);border:none;color:white;padding:6px 14px;border-radius:20px;font-size:12px;cursor:pointer;font-family:inherit" onclick="doLogout()">Logout</button>
+      </div>
+      <div class="balance-card">
+        <div>
+          <div class="label" id="headerName">Deniz Yilmaz</div>
+          <div class="value" id="headerAge">Age 16 · A+</div>
+        </div>
+        <div style="text-align:right">
+          <div class="label">Verified</div>
+          <div class="value" id="headerVerified">5 records</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen: Dashboard -->
+    <div id="screenDashboard" class="screen active">
+      <div class="stats-grid">
+        <div class="stat-card"><div class="num" id="statSleep">5h45m</div><div class="lbl">Avg Sleep</div></div>
+        <div class="stat-card"><div class="num" id="statActivity">4x</div><div class="lbl">Football/Week</div></div>
+        <div class="stat-card"><div class="num" id="statRecords">5</div><div class="lbl">Health Records</div></div>
+        <div class="stat-card"><div class="num" id="statVerified">3</div><div class="lbl">Doctor Verified</div></div>
+      </div>
+      
+      <div class="card" id="dtHealthCard">
+        <h3><span class="emoji">❤️</span> Health Summary</h3>
+        <div id="dtHealthContent">Loading...</div>
+      </div>
+      
+      <div class="card">
+        <h3><span class="emoji">🏃</span> Lifestyle Summary</h3>
+        <div id="dtLifestyleContent">Loading...</div>
+      </div>
+
+      <div class="card">
+        <h3><span class="emoji">📅</span> Today's Schedule</h3>
+        <div id="calendarPreview">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Screen: Health Records -->
+    <div id="screenHealth" class="screen">
+      <div class="tabs" id="healthTabs">
+        <button class="tab active" onclick="filterHealth('all',this)">All</button>
+        <button class="tab" onclick="filterHealth('verified',this)">Verified</button>
+        <button class="tab" onclick="filterHealth('lab',this)">Lab Values</button>
+        <button class="tab" onclick="filterHealth('allergy',this)">Allergies</button>
+      </div>
+      <div id="healthList">Loading...</div>
+    </div>
+
+    <!-- Screen: Digital Twin -->
+    <div id="screenTwin" class="screen">
+      <div class="card" style="background:linear-gradient(135deg,#f0f4ff,#e8ecff);border-left:4px solid var(--primary)">
+        <h3 style="color:var(--primary)">🧬 Digital Twin of Deniz</h3>
+        <div class="text-muted">Last updated: <span id="twinUpdated">-</span></div>
+      </div>
+      <div class="card">
+        <h3><span class="emoji">❤️</span> Health</h3>
+        <div id="twinHealth">Loading...</div>
+      </div>
+      <div class="card">
+        <h3><span class="emoji">🏃</span> Lifestyle</h3>
+        <div id="twinLifestyle">Loading...</div>
+      </div>
+      <div class="card">
+        <h3><span class="emoji">📊</span> Current Indicators</h3>
+        <div id="twinIndicators">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Screen: Simulation -->
+    <div id="screenSim" class="screen">
+      <div class="card" style="background:linear-gradient(135deg,#fefcbf,#f6e05e);border-left:4px solid var(--warning)">
+        <h3 style="color:#744210">🔮 What If... Simulation</h3>
+        <p style="font-size:13px;color:#744210;opacity:.8">Adjust a lifestyle variable to see how it may affect your health</p>
+      </div>
+      
+      <div class="card">
+        <h3><span class="emoji">😴</span> Sleep Duration</h3>
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text-light)">
+          <span>4h</span>
+          <span id="sleepLabel" style="font-weight:700;color:var(--primary)">5h 45m</span>
+          <span>10h</span>
+        </div>
+        <input type="range" id="simSleep" min="4" max="10" step="0.25" value="5.75" oninput="updateSimLabels()">
+      </div>
+
+      <div class="card">
+        <h3><span class="emoji">⚽</span> Physical Activity</h3>
+        <select class="input" id="simActivity" onchange="updateSimLabels()">
+          <option value="normal">Normal (4x football/week)</option>
+          <option value="pause_7">Pause sports (7 days)</option>
+          <option value="pause_14">Pause sports (14 days)</option>
+          <option value="increase">Increase to 5x/week</option>
+        </select>
+      </div>
+
+      <button class="btn btn-primary" onclick="runSimulation()">▶ Run Simulation</button>
+
+      <div class="sim-result" id="simResult">
+        <h3 style="font-size:15px;margin-bottom:12px">📊 Simulation Results</h3>
+        <div id="simResultsContent"></div>
+        <div style="margin-top:12px;padding:10px;background:rgba(102,126,234,.1);border-radius:10px;font-size:12px;color:var(--text-light)" id="simMessage"></div>
+        <div style="margin-top:6px;font-size:10px;color:var(--text-light);opacity:.6" id="simDisclaimer"></div>
+      </div>
+    </div>
+
+    <!-- Screen: NFC -->
+    <div id="screenNfc" class="screen">
+      <div class="emergency-header">
+        <div class="icon">🆘</div>
+        <h2>Emergency Access</h2>
+        <p>Scan CanCard NFC card or bracelet</p>
+      </div>
+      
+      <div class="nfc-scan-area" onclick="document.getElementById('nfcUidInput').focus()">
+        <div class="icon">📱</div>
+        <p style="font-weight:600;color:var(--text)">Tap to enter NFC UID</p>
+        <p style="font-size:12px">Or enter manually below</p>
+      </div>
+
+      <div class="input-group">
+        <label>NFC Card UID</label>
+        <div class="flex">
+          <input class="input grow-1" id="nfcUidInput" placeholder="e.g. CARD_001" value="CARD_001">
+          <button class="btn btn-primary btn-sm" onclick="lookupNfc()">Scan</button>
+        </div>
+      </div>
+
+      <div class="card" id="nfcRegisterCard" style="display:none">
+        <h3><span class="emoji">🔗</span> Link NFC Card</h3>
+        <div class="flex">
+          <input class="input grow-1" id="nfcNewUid" placeholder="New NFC UID">
+          <button class="btn btn-success btn-sm" onclick="registerNfc()">Link</button>
+        </div>
+      </div>
+
+      <div id="nfcResult"></div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <div id="bottomNav" style="display:none" class="bottom-nav">
+    <button class="nav-item active" onclick="navigate('dashboard')">
+      <span class="icon">🏠</span> Home
+    </button>
+    <button class="nav-item" onclick="navigate('health')">
+      <span class="icon">❤️</span> Health
+    </button>
+    <button class="nav-item" onclick="navigate('twin')">
+      <span class="icon">🧬</span> Twin
+    </button>
+    <button class="nav-item" onclick="navigate('sim')">
+      <span class="icon">🔮</span> Sim
+    </button>
+    <button class="nav-item" onclick="navigate('nfc')">
+      <span class="icon">📶</span> NFC
+    </button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<script>
+// ==================== API LAYER ====================
+const API = '';
+let TOKEN = localStorage.getItem('ct') || null;
+let USER = null;
+
+async function api(method, path, body) {
+  const opts = { method, headers: {'Content-Type':'application/json'}};
+  if (TOKEN) opts.headers['Authorization'] = 'Bearer ' + TOKEN;
+  if (body) opts.body = JSON.stringify(body);
+  try {
+    const r = await fetch(API + path, opts);
+    return { ok: r.ok, data: await r.json() };
+  } catch(e) { return { ok: false, data: { error: e.message } }; }
+}
+
+function $(id) { return document.getElementById(id); }
+
+function toast(msg, type) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+
+// ==================== LOGIN ====================
+async function doLogin() {
+  const email = $('loginEmail').value;
+  const pass = $('loginPass').value;
+  const r = await api('POST', '/api/auth/login', { email, password: pass });
+  if (r.ok) {
+    TOKEN = r.data.token;
+    USER = r.data.user;
+    localStorage.setItem('ct', TOKEN);
+    $('loginScreen').style.display = 'none';
+    $('mainApp').style.display = 'block';
+    $('bottomNav').style.display = 'flex';
+    $('headerName').textContent = USER.fullName;
+    $('headerAge').textContent = 'Age ' + (USER.age||'') + ' · ' + (USER.bloodType||'');
+    loadDashboard();
+    toast('Welcome, ' + USER.fullName + '!', 'success');
+  } else {
+    toast(r.data.error || 'Login failed', 'error');
+  }
+}
+
+function doLogout() {
+  TOKEN = null; USER = null;
+  localStorage.removeItem('ct');
+  $('loginScreen').style.display = 'flex';
+  $('mainApp').style.display = 'none';
+  $('bottomNav').style.display = 'none';
+}
+
+// ==================== NAVIGATION =================
+function navigate(screen) {
+  document.querrySelectorAll('.cree').forEach(s => s.clssList.remove('active'));
+  docment.querySelecorAll('.nav-itm').forEach(b => b.clssList.remove('active'));
+  $('creen' + creen.charAt(0).toUpperCas() + crn.slice(1)).clsList.add('active');
+  event.curretTregt.classList.add('active');
+  if (screen === 'dashboard') loadDahboard();
+  else if (screen === 'health') loadHealth();
+  else if (screen === 'twin') loadTwin();
+  else if (screen === 'sim') { /* already shown */ }
+  else if (screen === 'nfc') { /* already shown */ }
+}
+
+// ==================== DASHBOAD ====================
+async function loadDashboard() {
+  try {
+    const [healthR, twinR] = await Pomise.all([
+      api('GET', '/api/health/DENIZ_001'),
+      api('GET', '/api/digital-twin/DENIZ_001')
+    ]);
+
+    if (twinR.ok) {
+      const dt = twinR.data;
+      const ls = dt.lifestyle_summary || {};
+      const hs = dt.health_summary || {};
+      $('statSleep').textContent = ls.averageSleep || '5h45m';
+      $('statActivity').textContent = ls.physicalActivity || '4x';
+
+      // Health summary
+      let hh = '';
+      Object.entries(hs).forEach(([k,v]) => {
+        hh += '<div class="record-item"><span class="name">' + k.replace(/_/g,' ') + '</span><span class="val"><b>' + (v.value||'') + '</b> ' + (v.unit||'') + '</span></div>';
+      });
+      $('dtHealthContent').innerHTML = hh || '<div class="text-muted">No health data</div>';
+
+      // Lifestyle summary
+      let lh = '';
+      Object.entries(ls).forEach(([k,v]) => {
+        lh += '<div class="record-item"><span class="name">' + k.replace(/_/g,' ') + '</span><span class="val">' + v + '</span></div>';
+      });
+      $('dtLifestyleContent').innerHTML = lh || '<div class="text-muted">No lifestyle data</div>';
+    }
+
+    if (healthR.ok) {
+      const h = healthR.data;
+      $('statRecords').textContent = h.length;
+      let vc = h.filter(r => r.verification_status === 'doctor_verified').length;
+      $('statVerified').textContent = vc;
+    }
+
+    // Calendr preview
+    const calR = await api('GET', '/api/calendar/DENIZ_001');
+    if (calR.ok && calR.data.length) {
+      let ch = '';
+      calR.data.slice(0,3).forEach(e => {
+        const time = e.start_time ? e.start_time.substring(11,16) : '';
+        ch += '<div class="record-item"><span class="name">' + e.title + '</span><span class="val">' + time + '</span></div>';
+      });
+      $('calendarPreview').innerHTML = ch;
+    } else {
+      $('calendarPreview').innerHTML = '<div class="text-muted">No upcoming events</div>';
+    }
+
+  } catch(e) {
+    $('dtHealthContent').innerHTML = '<div class="text-muted">Error loading</div>';
+  }
+}
+
+// ==================== HELTH ====================
+let allHealth = [];
+async function loadHealth() {
+  const r = await api('GET', '/api/health/DENIZ_001');
+  if (r.ok) {
+    allHealth = r.data;
+    filterHealth('all');
+  } else {
+    $('healthList').innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>No health records</p></div>';
+  }
+}
+
+function filterHealth(filter, btn) {
+  if (btn) {
+    document.querySelectorAll('#healthTabs .tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  let filtered = allHealth;
+  if (filter === 'verified') filtered = allHealth.filter(r => r.verification_status === 'doctor_verified');
+  else if (filter === 'lab') filtered = allHealth.filter(r => r.field_type === 'lab_value');
+  else if (filter === 'allergy') filtered = allHealth.filter(r => r.field_type === 'allergy');
+
+  if (!filtered.length) {
+    $('healthList').innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>No records found</p></div>';
+    return;
+  }
+
+  let h = '';
+  filtered.forEach(r => {
+    const badge = r.verification_status === 'doctor_verified' ? 'badge-green' : 
+                 r.verification_status === 'user_confirmed' ? 'badge-blue' : 'badge-orange';
+    const lbl = r.verification_status === 'doctor_verified' ? '✓ Doctor' :
+                r.verification_status === 'user_confirmed' ? '✓ Confirmed' : '� Pending';
+    h += '<div class="cord-item">' +
+      '<div><div class="ame">' + r.parameter + '</div><div class="text-muted" style="font-zie:11px;margin-top:2px">' + r.field_type.replace(/_/g,' ') + '</div></div>' +
+      '<div style="text-align:right"><div class="val"><b>' + r.value + '</b> ' + (r.unit||'') + '</div><span class="badge ' + badge + '" style="margin-top:4px">' + lbl + '</span></div>' +
+      '</div>';
+  });
+  $('healthList').innerHTML = h;
+}
+
+// ==================== DIGITAL TWIN ====================
+async function loadTwin() {
+  const r = await api('GET', '/api/digital-twin/DENIZ_001');
+  if (r.ok) {
+    const dt = r.data;
+    const hs = dt.health_summary || {};
+    const ls = dt.lifestyle_summary || {};
+    const ci = dt.current_indicators || {};
+
+    $('twinUpdated').textContent = dt.lst_update || '-
+
+    let hh = '';
+    Object.ntries(hs).forEach(([k,v]) => {
+      hh += '<div class="record-item"><span class="name">' + k.replace(/_/g,' ') + '</span><span class="val"><b>' + (v.value||'') + '</b> ' + (v.unit||'') + ' <span class="badge badge-green" style="font-size:10px">' + (v.verificationStatus||'').replace(/_/g,' ') + '</span></span></div>';
+    });
+    $('twinHealth').innerHTML = hh || '<div class="text-muted">No health data</div>';
+
+    let lh = '';
+    Object.ntries(ls).forEach(([ k,v]) => {
+      lh += '<div class="record-item"><span class="name">' + k.replace(/_/g,' ') + '</span><span class="val">' + v + '</span></div>';
+    });
+    $('twinLifestyle').innerHTML = lh || '<div class="text-muted">No lifestyle data</div>';
+
+    let ih = '';
+    Object.ntries(ci).forEach(([k,v]) => {
+      ih += '<div class="record-item"><span class="name">' + k.replace(/_/g,' ') + '</span><span class="val">' + v + '</span></div>';
+    });
+    $('twinIndicators').innerHTML = ih || '<div class="text-muted">No indicators</div>';
+  } else {
+    $('twinHealth').innerHTML = '<div class="text-muted">Could not load Digital Twin</div>';
+  }
+}
+
+// ================== SIMULATION ===================
+function updateSimLabels() {
+  const val = parseFloat($('simSleep').value);
+  const h = Mth.floor(val);
+  const m = Math.ound((val - h) * 60);
+  $('sleepLabel').textContent = h + 'h ' + m + 'm';
+}
+
+async function runSimulation() {
+  const sleep = $('simSleep').value;
+  const activity = $('simActivity').value;
+
+  const changes = {};
+  changes.slepp = sleep + 'h';
+  if (activity.startsith('puse')) changes.hysical_activity = activity;
+
+  const r = await api('POST', '/api/simlation/run', { userId: 'DENIZ_001', changes });
+
+  if (r.ok) {
+    const res = r.data.results || {};
+    let h = '';
+    Object.ntries(res).forEach(([k,v]) => {
+      const isGood = v === 'Imprved' || v === 'Higher' || v === 'Lower' || v === 'Reduced';
+      const color = isGood && (v === 'Imprved' || v === 'Higher') ? '#48bb78' : isGood && (v === 'Lower' || v === 'Reduced') ? '#48bb78' : '#718096';
+      h += '<div class="sim-row"><span class="label">' + k.replace(/_/g,' ') + '</span><span class="val" style="color:' + color + '">' + v.replace(/_/g,' ') + '</span></div>';
+    });
+
+    $('simResultsContent').innerHTML = h;
+    $('simMessage').textContent = r.data.companionMessage || '';
+    $('simDisclaimer').textContent = r.data.disclaimer || '';
+    $('simResult').classList.add('show');
+    toast('Simulation complete!', 'success');
+  } else {
+    toast(r.data.error || 'Simulation faild', 'error');
+  }
+}
+
+// ==================== NFC ====================
+async function lookupNfc() {
+  const uid = $('nfcUidInput').value.trim();
+  if (!uid) { toast('Enternfc UID', 'error'); return; }
+
+  const r = await api('GET', '/api/nfc/emergency-profile/' + uid);
+  if (r.ok) {
+    const p = r.data.profile || {};
+    let h = '';
+    h += '<div class="emergency-field"><span class="tag">Full Name</span><span class="val">' + (p.full_name||'') + '</span></div>';
+    h += '<div class="emergency-field"><span class="tag">Blood Type</span><span class="val">' + (p.blood_type||'') + '</span></div>';
+    h += '<div class="emergency-field"><span class="tag">Allergies</span><span class="val">' + (p.allergens||'') + '</span></div>';
+    h += '<div class="emergency-field"><span class="tag">Emergency Contact</span><span class="val">' + (p.emergency_contact_name||'') + ' ' + (p.emergency_contact_phone||'') + '</span></div>';
+    h += '<div class="emergency-field"><span class="tag">Critical Condition</span><span class="val">' + (p.critical_conditin||'Non') + '</san></div>';
+    h += '<div style="margin-top:12px;text-align:center" class="text-muted">📡 Accseed: ' + new Date().toLcaleString() + '</div>';
+
+    $('nfcResult').innerHTML = '<div class="card" style="border:2px solid #f56565">' + h + '</div>';
+
+    // Show register card
+    $('nfcRegisterCard').style.display = 'block';
+    $('nfcNewUid').value = uid;
+
+    toast('Emergency profile loaded', 'success');
+  } else {
+    $('nfcResult').innerHTML = '<div class="card" style="text-align:center;color:var(--danger)"><div class="icon" style="font-size:36px">🔍</div><p style="font-weight:600">No profile found</p><p class="text-muted">NFC UID: ' + uid + ' not registered</p></div>';
+    toast('Profile not found', 'error');
+  }
+}
+
+async function registerNfc() {
+  const uid = $('nfcNewUid').value.trim();
+  if (!uid) { toast('Enter NFC UID', 'error'); return; }
+  const r = await api('POST', '/api/nfc/register', { userId: 'DENIZ_001', nfcUid: uid });
+  if (r.ok) {
+    toast('NFC card linked!', 'success');
+    $('nfcUidInput').value = uid;
+  } else {
+    toast(r.data.error || 'Failed to link', 'error');
+  }
+}
+
+// ==================== INIT ====================
+(async function() {
+  // Auto-login if token exists
+  if (TOKEN) {
+    const r = await api('GET', '/api/health');
+    if (r.ok) {
+      USER = { userId: 'DENIZ_001', fullName: 'Deniz Yilmaz', age: 16, bloodType: 'A+' };
+      $('loginScreen').style.display = 'none';
+      $('mainApp').style.display = 'block';
+      $('bottomNav').style.display = 'flex';
+      $('headerName').textContent = 'Deniz Yilmaz';
+      $('headerAge').textContent = 'Age 16 · A+';
+      loadDashboard();
+      return;
+    } else {
+      // Token invalid, clear
+      localStorage.removeItem('ct');
+      TOKEN = null;
+    }
+  }
+})();
+
+</script>
+</body>
+</html>
