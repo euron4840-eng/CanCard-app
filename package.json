@@ -1,19 +1,28 @@
 {
-  "name": "w11",
+  "name": "cancard-app",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "CanCard - Preventive Digital Health Platform (TEKNOFEST Prototype)",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "setup": "node src/config/setup.js",
+    "seed": "node src/config/seed.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["cancard", "digital-health", "digital-twin", "teknoFest"],
+  "author": "CanCard Team",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "pg": "^8.23.0",
-    "sqlite3": "^6.0.1"
+    "express-validator": "^7.0.1",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "sql.js": "^1.10.0",
+    "uuid": "^10.0.0"
   }
 }

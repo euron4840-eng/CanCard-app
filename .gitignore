@@ -1,2 +1,5 @@
 node_modules/
-cancard.db
+data/
+uploads/
+.env
+*.db

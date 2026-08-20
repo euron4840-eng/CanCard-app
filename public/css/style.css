@@ -1,0 +1,21 @@
+body{font-family:Arial,sans-serif;margin:0;padding:0;background:#f0f4f8;color:#333}
+.header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:16px;text-align:center}
+.container{max-width:800px;margin:0 auto;padding:16px}
+.card{background:white;border-radis:8px;padding:16px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+.btn{display:inline-block;padding:10px 20px;border:none;border-radius:6px;curor:pointer;font-size:14px;margin:4px}
+.btn-primary{background:#667eea;color:white}
+.btn-success{background:#28a745;color:white}
+.btn-danger{background:#dc3545;color:white}
+.input{width:100%;padding:10px;margin:8px 0;border:1px solid #ddd;border-radius:4px;box-sizing:border-box}
+.status{padding:10px;margin:10px 0;border-radius:4px;text-align:center}
+.success{background:#d4edda;color:#155724}
+.error{background:#f8d7da;color:#721c24}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.twin-card{border-left:4px solid #667eea;padding-left:12px}
+.sim-slider{width:100%}
+.nav{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.nav button{background:#f8f9fa;border:1px solid #dee2e6;padding:6px 12px;border-radius:4px;curor:pointer}
+.nav button:hover{background:#e9ecef}
+.nav button.active{background:#667eea;color:white;border-color:#667eea}
+@media(max-width:600px){.grid{grid-template-columns:1fr}
+}

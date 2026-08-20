@@ -1,107 +1,24 @@
 require('dotenv').config();
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
-const app = express();
-
-app.use(express.json());
-app.use(express.static('public')); // Add this line to serve HTML/CSS/JS files
-
-// Open local SQL database
-const db = new sqlite3.Database('./cancard.db');
-
-// Set up table and initial seed data
-db.serialize(() => {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS users (
-      user_id TEXT PRIMARY KEY,
-      full_name TEXT NOT NULL,
-      age INTEGER NOT NULL,
-      blood_type TEXT NOT NULL,
-      verification_status TEXT DEFAULT 'self_reported'
-    )
-  `);
-
-  db.run(`
-    INSERT OR IGNORE INTO users (user_id, full_name, age, blood_type, verification_status)
-    VALUES ('DENIZ_001', 'Deniz Yılmaz', 16, 'A+', 'doctor_verified')
-  `);
-});
-
-// 1. GET: Fetch user by ID
-app.get('/api/user/:id', (req, res) => {
-  const { id } = req.params;
-
-  db.get('SELECT * FROM users WHERE user_id = ?', [id], (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!row) return res.status(404).json({ error: 'User profile not found' });
-
-    res.json({
-      userId: row.user_id,
-      fullName: row.full_name,
-      age: row.age,
-      bloodType: row.blood_type,
-      verificationStatus: row.verification_status
-    });
-  });
-});
-
-// 2. POST: Add a new user
-app.post('/api/user', (req, res) => {
-  const { userId, fullName, age, bloodType, verificationStatus } = req.body;
-
-  const sql = `
-    INSERT INTO users (user_id, full_name, age, blood_type, verification_status)
-    VALUES (?, ?, ?, ?, ?)
-  `;
-  const params = [userId, fullName, age, bloodType, verificationStatus || 'self_reported'];
-
-  db.run(sql, params, function (err) {
-    if (err) return res.status(400).json({ error: err.message });
-    res.json({ message: 'User created successfully', userId });
-  });
-});
-
-// 3. PUT: Update an existing user
-app.put('/api/user/:id', (req, res) => {
-  const { id } = req.params;
-  const { fullName, age, bloodType, verificationStatus } = req.body;
-
-  const sql = `
-    UPDATE users
-    SET full_name = COALESCE(?, full_name),
-        age = COALESCE(?, age),
-        blood_type = COALESCE(?, blood_type),
-        verification_status = COALESCE(?, verification_status)
-    WHERE user_id = ?
-  `;
-
-  const params = [
-    fullName ?? null,
-    age ?? null,
-    bloodType ?? null,
-    verificationStatus ?? null,
-    id
-  ];
-
-  db.run(sql, params, function (err) {
-    if (err) return res.status(400).json({ error: err.message });
-    if (this.changes === 0) return res.status(404).json({ error: 'User not found' });
-    res.json({ message: 'User updated successfully', userId: id });
-  });
-});
-
-// 4. DELETE: Remove a user by ID
-app.delete('/api/user/:id', (req, res) => {
-  const { id } = req.params;
-
-  db.run('DELETE FROM users WHERE user_id = ?', [id], function (err) {
-    if (err) return res.status(500).json({ error: err.message });
-    if (this.changes === 0) return res.status(404).json({ error: 'User not found' });
-    res.json({ message: 'User deleted successfully', userId: id });
-  });
-});
-
-const PORT = 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+const cors = require('cors');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const {v4:u}=require('uuid');
+const db=require('./src/config/database');
+const app=express();app.use(cors());app.use(express.json({limit:'10mb'}));app.use(express.static('public'));
+async function init(){await db.getDatabase();console.log('DB ready');}init();
+function a(r,s,n){const h=r.headers.authorization;if(!h||!h.startsWith('Bearer '))return s.status(401).json({error:'No token'});try{r.user=jwt.verify(h.split(' ')[1],process.env.JWT_SECRET);n();}catch(e){s.status(403).json({error:'Invalid token'});}}
+app.get('/api/health',(r,s)=>s.json({status:'ok',app:'CanCard'}));
+app.post('/api/auth/login',(r,s)=>{try{const{email,password}=r.body;if(!email||!password)return s.status(400).json({error:'Fields required'})
+;const u=db.query('SELECT * FROM users WHERE email=?',[email]);if(!u.length)return s.status(401).json({error:'Invalid'});const U=u[0];if(!bcrypt.compareSync(password,U.password_hash))return s.status(401).json({error:'Invalid'});const t=jwt.sign({userId:U.user_id,role:U.role},process.env.JWT_SECRET,{expiresIn:'24h'});s.json({token:t,user:{userId:U.user_id,email:U.email,fullName:U.full_name,role:U.role,age:U.age,bloodType:U.blood_type}});}catch(e){s.status(500).json({error:e.message});}});
+app.get('/api/users/:id',a,(r,s)=>{try{const u=db.getOne('SELECT * FROM users WHERE user_id=?',[r.params.id]);if(!u)return s.status(404).json({error:'No'});const{p,...safe}=u;s.json(safe);}catch(e){s.status(500).json({error:e.message});}});
+app.get('/api/health/:id',a,(r,s)=>{try{s.json(db.query('SELECT * FROM health_records WHERE user_id=? ORDER BY recorded_at DESC',[r.params.id]));}catch(e){s.status(500).json({error:e.message});}});
+app.get('/api/digital-twin/:id',a,(r,s)=>{try{let t=db.getOne('SELECT * FROM digital_twin_state WHERE user_id=?',[r.params.id]);if(!t){db.execute('INSERT INTO digital_twin_state(twin_id,user_id,health_summary,lifestyle_summary)VALUES(?,?,?,?)',[u(),r.params.id,'{}','{}']);t=db.getOne('SELECT * FROM digital_twin_state WHERE user_id=?',[r.params.id]);}t.health_summary=JSON.parse(t.health_summary||'{}');t.lifestyle_summary=JSON.parse(t.lifestyle_summary||'{}');s.json(t);}catch(e){s.status(500).json({error:e.message});}});
+app.post('/api/simulation/run',a,(r,s)=>{try{const{changes}=r.body;var res={};for(const[k,v]of Object.entries(changes||{})){if(k==='sleep'){res.sleepAdequacy='Improved';res.recoverySupport='Higher';res.dailyFatigueRisk='Lower';}if(k==='physical_activity'){res.recoverySupport='Improved';res.physicalStress='Reduced';}if(k==='hydration'){res.hydrationStatus='Improved';}}s.json({results:res,companionMessage:'Based on your Digital Twin. Always consult a doctor.',disclaimer:'Educational estimate.'});}catch(e){s.status(500).json({error:e.message});}});
+app.get('/api/nfc/emergency-profile/:nfcUid',(r,s)=>{try{const p=db.getOne('SELECT u.full_name,u.blood_type,u.age,e.emergency_contact_name,e.emergency_contact_phone,e.allergens,e.critical_condition FROM emergency_profiles e JOIN users u ON u.user_id=e.user_id WHERE e.nfc_uid=?',[r.params.nfcUid]);if(!p)return s.status(404).json({error:'No'});s.json({profile:p,timestamp:new Date().toISOString()});}catch(e){s.status(500).json({error:e.message});}});
+app.post('/api/nfc/register',(r,s)=>{try{db.execute('UPDATE emergency_profiles SET nfc_uid=? WHERE user_id=?',[r.body.nfcUid,r.body.userId]);s.json({message:'OK'});}catch(e){s.status(400).json({error:e.message});}});
+app.post('/api/ocr/extract',a,(r,s)=>{try{const{rawText}=r.body;const ext=[];for(const l of(rawText||'').split('\n')){const m=l.trim().match(/^([A-Za-z\s-]+)[:\s]+([\d.]+)\s*([A-Za-z\/%]+)$/);if(m)ext.push({parameter:m[1].trim(),value:m[2],unit:m[3]});}s.json({extractedFields:ext});}catch(e){s.status(400).json({error:e.message});}});
+app.post('/api/ocr/confirm',a,(r,s)=>{try{for(const f of(r.body.confirmedFields||[])){db.execute('INSERT INTO health_records(record_id,user_id,field_type,parameter,value,unit,source,verification_status)VALUES(?,?,?,?,?,?,?,?)',[u(),f.userId,'lab_value',f.parameter,f.value,f.unit,'ai_extracted','user_confirmed']);}s.json({message:'Confirmed'});}catch(e){s.status(400).json({error:e.message});}});
+app.post('/api/reset',(r,s)=>{try{db.execute('DELETE FROM health_records WHERE user_id=?',['DENIZ_001']);s.json({message:'Reset. Run npm run seed to reload.'});}catch(e){s.status(500).json({error:e.message});}});
+app.use((e,r,s,n)=>{console.error(e);s.status(500).json({error:'Internal error'});});
+const P=process.env.PORT||3000;app.listen(P,'0.0.0.0',()=>{console.log('CanCard running on port '+P);console.log('Demo: deniz.demo@cancard.app / demo1234');});
