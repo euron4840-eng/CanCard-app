@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const {v4:u}=require('uuid');
 const db=require('./src/config/database');
+if(!process.env.JWT_SECRET) process.env.JWT_SECRET='cancard-dev-secret-key-2026';
 const app=express();app.use(cors());app.use(function noCache(r,s,n){s.set("Cache-Control","no-store,no-cache,must-revalidate,max-age=0");s.set("Pragma","no-cache");s.set("Expires","0");n();});app.use(express.json({limit:'10mb'}));app.use(express.static('public'));
 async function init(){await db.getDatabase();console.log('DB ready');}init();
 function a(r,s,n){const h=r.headers.authorization;if(!h||!h.startsWith('Bearer '))return s.status(401).json({error:'No token'});try{r.user=jwt.verify(h.split(' ')[1],process.env.JWT_SECRET);n();}catch(e){s.status(403).json({error:'Invalid token'});}}
